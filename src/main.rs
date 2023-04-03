@@ -18,6 +18,7 @@ fn main() {
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_physics)
         .add_system(move_player)
+        .add_system(display_events.in_base_set(CoreSet::PostUpdate))
         .run();
 }
 
@@ -63,12 +64,15 @@ pub fn setup_physics(
         },
     ));
 
+    // Spawn player
     commands.spawn((
         RigidBody::Dynamic,
         Player,
         Collider::ball(2.0),
         ColliderDebugColor(Color::hsl(220.0, 1.0, 0.3)),
         Velocity::default(),
+        ActiveEvents::COLLISION_EVENTS,
+        ContactForceEventThreshold(30.0),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::UVSphere {
                 radius: 1.0,
@@ -77,6 +81,26 @@ pub fn setup_physics(
             })),
             material: materials.add(Color::rgb(0.0, 0.15, 0.8).into()),
             transform: Transform::from_xyz(0.0, 10.0, 0.0),
+            ..default()
+        },
+    ));
+
+    // Spawn obstacles
+    let obstacle_size = 2.0;
+    commands.spawn((
+        // RigidBody::Fixed,
+        Collider::cuboid(obstacle_size, obstacle_size, obstacle_size),
+        ColliderDebugColor(Color::hsl(0.0, 1.0, 220.3)),
+        // ActiveEvents::COLLISION_EVENTS,
+        // ContactForceEventThreshold(30.0),
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Box::new(
+                obstacle_size,
+                obstacle_size,
+                obstacle_size,
+            ))),
+            material: materials.add(Color::rgb(0.9, 0.15, 0.2).into()),
+            transform: Transform::from_xyz(20.0, 1.0, 0.0),
             ..default()
         },
     ));
@@ -91,5 +115,25 @@ fn move_player(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Veloci
 
     if keyboard_input.pressed(KeyCode::Right) {
         player_velocity.linvel += Vec3::new(1.0, 0.0, 0.0);
+    }
+}
+
+fn display_events(
+    mut collision_events: EventReader<CollisionEvent>,
+    mut contact_force_events: EventReader<ContactForceEvent>,
+) {
+    for collision_event in collision_events.iter() {
+        println!("Received collision event: {collision_event:?}");
+        match collision_event {
+            CollisionEvent::Started(first_entity, second_entity, event) => {
+                // @TODO: Destroy the non-player entity
+                // and trigger "merge" with player with destroyed entity's mesh
+            }
+            CollisionEvent::Stopped(_, _, _) => todo!(),
+        }
+    }
+
+    for contact_force_event in contact_force_events.iter() {
+        println!("Received contact force event: {contact_force_event:?}");
     }
 }
