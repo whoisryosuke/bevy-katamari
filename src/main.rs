@@ -5,6 +5,14 @@ use bevy_rapier3d::prelude::*;
 #[derive(Component)]
 struct Player;
 
+// The Floor object. Used to filter some collision events.
+#[derive(Component)]
+struct Floor;
+
+// Objects that can "attach" to our player's ball
+#[derive(Component)]
+struct BallObject;
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(
@@ -54,7 +62,7 @@ pub fn setup_physics(
     let ground_height = 0.01;
 
     commands.spawn((
-        // TransformBundle::from(Transform::from_xyz(0.0, -ground_height, 0.0)),
+        Floor,
         Collider::cuboid(ground_size, ground_height, ground_size),
         PbrBundle {
             mesh: meshes.add(shape::Plane::from_size(ground_size).into()),
@@ -67,13 +75,18 @@ pub fn setup_physics(
     // Spawn player
     let player_size = 3.0;
     commands.spawn((
-        RigidBody::Dynamic,
         Player,
+        // Physics
+        // Necessary collider "boxes" around player
+        RigidBody::Dynamic,
         Collider::ball(player_size),
         ColliderDebugColor(Color::hsl(220.0, 1.0, 0.3)),
+        // Needed to "move" or change speed of object
         Velocity::default(),
+        // Needed to detect collision events
         ActiveEvents::COLLISION_EVENTS,
         ContactForceEventThreshold(30.0),
+        // Mesh
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::UVSphere {
                 radius: player_size,
@@ -89,6 +102,7 @@ pub fn setup_physics(
     // Spawn obstacles
     let obstacle_size = 2.0;
     commands.spawn((
+        BallObject,
         // RigidBody::Fixed,
         Collider::cuboid(obstacle_size, obstacle_size, obstacle_size),
         ColliderDebugColor(Color::hsl(0.0, 1.0, 220.3)),
@@ -132,15 +146,51 @@ fn move_player(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Veloci
 }
 
 fn display_events(
+    mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
     mut contact_force_events: EventReader<ContactForceEvent>,
+    player_entity: Query<Entity, With<Player>>,
+    floor_entity: Query<Entity, With<Floor>>,
 ) {
+    // Get the index of player and floor entities to check for later
+    let player = player_entity
+        .get_single()
+        .expect("Player not found in scene");
+    let floor = floor_entity
+        .get_single()
+        .expect("Player not found in scene");
+    let floor_index = floor.index();
+
+    // Check for collisions
     for collision_event in collision_events.iter() {
-        println!("Received collision event: {collision_event:?}");
         match collision_event {
-            CollisionEvent::Started(first_entity, second_entity, event) => {
+            CollisionEvent::Started(first_entity, second_entity, _) => {
+                // If we collided with floor, don't care
+                if first_entity.index() == floor_index || second_entity.index() == floor_index {
+                    println!("Collided with floor");
+                    return;
+                }
+
                 // @TODO: Destroy the non-player entity
                 // and trigger "merge" with player with destroyed entity's mesh
+                println!(
+                    "{} collided with {}",
+                    first_entity.index(),
+                    second_entity.index()
+                );
+
+                // Check which object isn't the player
+                let mut collider_index = first_entity.index();
+                let mut collider_entity = first_entity;
+                if collider_index == player.index() {
+                    collider_index = second_entity.index();
+                    collider_entity = second_entity;
+                }
+
+                // Attach object to player
+
+                // Destroy the non-player
+                // commands.entity(*collider_entity).despawn();
             }
             CollisionEvent::Stopped(first_entity, second_entity, event) => {}
         }
