@@ -22,10 +22,22 @@ fn main() {
 }
 
 fn setup_graphics(mut commands: Commands) {
+    // Camera
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(-30.0, 30.0, 100.0)
             .looking_at(Vec3::new(0.0, 10.0, 0.0), Vec3::Y),
         ..Default::default()
+    });
+
+    // Lighting
+    commands.spawn(PointLightBundle {
+        point_light: PointLight {
+            intensity: 1500.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_xyz(4.0, 8.0, 4.0),
+        ..default()
     });
 }
 
@@ -38,7 +50,7 @@ pub fn setup_physics(
      * Ground
      */
     let ground_size = 200.1;
-    let ground_height = 0.1;
+    let ground_height = 0.01;
 
     commands.spawn((
         // TransformBundle::from(Transform::from_xyz(0.0, -ground_height, 0.0)),
@@ -72,8 +84,6 @@ pub fn setup_physics(
 
 fn move_player(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Velocity, With<Player>>) {
     let mut player_velocity = query.single_mut();
-
-    println!("Player velocity: {}", player_velocity.linvel);
 
     if keyboard_input.pressed(KeyCode::Left) {
         player_velocity.linvel -= Vec3::new(1.0, 0.0, 0.0);
