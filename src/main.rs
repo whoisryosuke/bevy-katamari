@@ -24,7 +24,11 @@ fn setup_graphics(mut commands: Commands) {
     });
 }
 
-pub fn setup_physics(mut commands: Commands) {
+pub fn setup_physics(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     /*
      * Ground
      */
@@ -32,52 +36,29 @@ pub fn setup_physics(mut commands: Commands) {
     let ground_height = 0.1;
 
     commands.spawn((
-        TransformBundle::from(Transform::from_xyz(0.0, -ground_height, 0.0)),
+        // TransformBundle::from(Transform::from_xyz(0.0, -ground_height, 0.0)),
         Collider::cuboid(ground_size, ground_height, ground_size),
+        PbrBundle {
+            mesh: meshes.add(shape::Plane::from_size(ground_size).into()),
+            material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+            transform: Transform::from_xyz(0.0, -ground_height, 0.0),
+            ..default()
+        },
     ));
 
-    /*
-     * Create the cubes
-     */
-    let num = 8;
-    let rad = 1.0;
-
-    let shift = rad * 2.0 + rad;
-    let centerx = shift * (num / 2) as f32;
-    let centery = shift / 2.0;
-    let centerz = shift * (num / 2) as f32;
-
-    let mut offset = -(num as f32) * (rad * 2.0 + rad) * 0.5;
-    let mut color = 0;
-    let colors = [
-        Color::hsl(220.0, 1.0, 0.3),
-        Color::hsl(180.0, 1.0, 0.3),
-        Color::hsl(260.0, 1.0, 0.7),
-    ];
-
-    for j in 0usize..20 {
-        for i in 0..num {
-            for k in 0usize..num {
-                let x = i as f32 * shift - centerx + offset;
-                let y = j as f32 * shift + centery + 3.0;
-                let z = k as f32 * shift - centerz + offset;
-                color += 1;
-
-                commands
-                    .spawn(TransformBundle::from(Transform::from_rotation(
-                        Quat::from_rotation_x(0.2),
-                    )))
-                    .with_children(|child| {
-                        child.spawn((
-                            TransformBundle::from(Transform::from_xyz(x, y, z)),
-                            RigidBody::Dynamic,
-                            Collider::cuboid(rad, rad, rad),
-                            ColliderDebugColor(colors[color % 3]),
-                        ));
-                    });
-            }
-        }
-
-        offset -= 0.05 * rad * (num as f32 - 1.0);
-    }
+    commands.spawn((
+        RigidBody::Dynamic,
+        Collider::ball(2.0),
+        ColliderDebugColor(Color::hsl(220.0, 1.0, 0.3)),
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::UVSphere {
+                radius: 1.0,
+                sectors: 16,
+                stacks: 8,
+            })),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            transform: Transform::from_xyz(0.0, 10.0, 0.0),
+            ..default()
+        },
+    ));
 }
