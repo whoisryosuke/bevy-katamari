@@ -65,22 +65,23 @@ pub fn setup_physics(
     ));
 
     // Spawn player
+    let player_size = 3.0;
     commands.spawn((
         RigidBody::Dynamic,
         Player,
-        Collider::ball(2.0),
+        Collider::ball(player_size),
         ColliderDebugColor(Color::hsl(220.0, 1.0, 0.3)),
         Velocity::default(),
         ActiveEvents::COLLISION_EVENTS,
         ContactForceEventThreshold(30.0),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: 1.0,
+                radius: player_size,
                 sectors: 16,
                 stacks: 8,
             })),
             material: materials.add(Color::rgb(0.0, 0.15, 0.8).into()),
-            transform: Transform::from_xyz(0.0, 10.0, 0.0),
+            transform: Transform::from_xyz(0.0, player_size * 1.5, 0.0),
             ..default()
         },
     ));
@@ -116,6 +117,18 @@ fn move_player(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Veloci
     if keyboard_input.pressed(KeyCode::Right) {
         player_velocity.linvel += Vec3::new(1.0, 0.0, 0.0);
     }
+
+    if keyboard_input.pressed(KeyCode::Up) {
+        player_velocity.linvel -= Vec3::new(0.0, 0.0, 1.0);
+    }
+
+    if keyboard_input.pressed(KeyCode::Down) {
+        player_velocity.linvel += Vec3::new(0.0, 0.0, 1.0);
+    }
+
+    if keyboard_input.pressed(KeyCode::Space) {
+        player_velocity.linvel += Vec3::new(0.0, 2.0, 0.0);
+    }
 }
 
 fn display_events(
@@ -129,7 +142,7 @@ fn display_events(
                 // @TODO: Destroy the non-player entity
                 // and trigger "merge" with player with destroyed entity's mesh
             }
-            CollisionEvent::Stopped(_, _, _) => todo!(),
+            CollisionEvent::Stopped(first_entity, second_entity, event) => {}
         }
     }
 
