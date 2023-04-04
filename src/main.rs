@@ -16,11 +16,13 @@ struct BallObject;
 // Camera that follows the player
 #[derive(Component)]
 struct FollowCamera {
-    distance: f32,
+    distance: Vec3,
 }
 impl Default for FollowCamera {
     fn default() -> Self {
-        FollowCamera { distance: 3.0 }
+        FollowCamera {
+            distance: Vec3::new(0.0, 3.0, 20.0),
+        }
     }
 }
 
@@ -147,12 +149,19 @@ pub fn setup_physics(
     }
 }
 
-fn camera_follow(mut camera_query: Query<(&FollowCamera, &mut Transform)>) {
+fn camera_follow(
+    mut camera_query: Query<(&FollowCamera, &mut Transform), Without<Player>>,
+    player_query: Query<&Transform, With<Player>>,
+) {
     let (camera_state, mut camera_transform) = camera_query
         .get_single_mut()
         .expect("Follow camera not found.");
 
-    camera_transform.translation.y += 0.01;
+    let player_transform = player_query
+        .get_single()
+        .expect("Player not found for follow camera.");
+
+    camera_transform.translation = player_transform.translation + camera_state.distance;
 }
 
 fn move_player(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Velocity, With<Player>>) {
