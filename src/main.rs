@@ -1,5 +1,11 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{
+    egui::{
+        self, Align2, Color32, FontId, Id, LayerId, Order, Pos2, Rect, Rounding, Shape, Stroke,
+        Vec2,
+    },
+    EguiContexts, EguiPlugin,
+};
 use bevy_rapier3d::prelude::*;
 
 // The Player object
@@ -13,6 +19,19 @@ struct Floor;
 // Objects that can "attach" to our player's ball
 #[derive(Component)]
 struct BallObject;
+
+// Notification data
+struct Notification {
+    title: String,
+    message: String,
+    timer: Timer,
+}
+
+// App state to store and manage notifications
+#[derive(Resource)]
+struct NotificationState {
+    notifications: Vec<Notification>,
+}
 
 // Camera that follows the player
 #[derive(Component)]
@@ -34,6 +53,10 @@ impl Default for FollowCamera {
 #[derive(Default)]
 struct AttachObjectEvent(Option<Entity>);
 
+// Event to trigger a notification
+#[derive(Default)]
+struct NotificationEvent(String, String);
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(
@@ -42,6 +65,10 @@ fn main() {
             0xFF as f32 / 255.0,
         )))
         .add_event::<AttachObjectEvent>()
+        .add_event::<NotificationEvent>()
+        .insert_resource(NotificationState {
+            notifications: vec![],
+        })
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
@@ -53,6 +80,7 @@ fn main() {
         .add_system(move_player)
         .add_system(display_events.in_base_set(CoreSet::PostUpdate))
         .add_system(attach_event)
+        .add_system(handle_notification_events)
         .run();
 }
 
@@ -153,10 +181,56 @@ pub fn setup_physics(
     }
 }
 
-fn ui_example_system(mut contexts: EguiContexts) {
-    egui::Window::new("Hello").show(contexts.ctx_mut(), |ui| {
-        ui.label("world");
-    });
+fn ui_example_system(
+    mut contexts: EguiContexts,
+    mut notification_state: ResMut<NotificationState>,
+    time: Res<Time>,
+) {
+    let ctx = contexts.ctx_mut();
+    let painter = ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("notifications")));
+    let visuals = ctx.style().visuals.widgets.noninteractive;
+
+    for notification in notification_state.notifications.iter_mut() {
+        // Tick the timer
+        notification.timer.tick(time.delta());
+        let alpha = notification.timer.percent() as u8 * 255;
+
+        // Draw squares representing animations
+        painter.add(Shape::Rect(egui::epaint::RectShape {
+            rect: Rect {
+                // The top left corner of rectangle
+                // Still screen space positioning - so we convert using RectTransform
+                min: Pos2 { x: 0.0, y: 0.0 },
+                // The bottom right corner of rectangle
+                max: Pos2 { x: 250.0, y: 100.0 },
+            },
+            rounding: Rounding {
+                nw: 0.0,
+                ne: 0.0,
+                sw: 0.0,
+                se: 0.0,
+            },
+            fill: Color32::from_rgba_unmultiplied(0, 255, 255, alpha),
+            stroke: Stroke {
+                width: 0.0,
+                color: Color32::WHITE,
+            },
+        }));
+
+        // Text
+        let caption_galley = ctx.fonts(|fonts| {
+            fonts.layout(
+                notification.title.clone(),
+                FontId::proportional(16.),
+                visuals.fg_stroke.color,
+                f32::INFINITY,
+            )
+        });
+        // let (caption_width, caption_height) =
+        //     (caption_galley.rect.width(), caption_galley.rect.height());
+
+        painter.galley(Pos2 { x: 0.0, y: 0.0 }, caption_galley);
+    }
 }
 
 fn camera_follow(
@@ -265,6 +339,7 @@ fn attach_event(
     mut attachable_objects: Query<(Entity, &mut Transform), With<BallObject>>,
     player_entity: Query<Entity, With<Player>>,
     rapier_context: Res<RapierContext>,
+    mut notification_events: EventWriter<NotificationEvent>,
 ) {
     // Check for events
     if !attach_events.is_empty() {
@@ -308,7 +383,22 @@ fn attach_event(
                 commands
                     .entity(player_entity)
                     .push_children(&[collider_entity]);
+
+                // Send notification
+                notification_events.send(NotificationEvent(
+                    "Test".to_string(),
+                    "Smoke weed everyday".to_string(),
+                ))
             }
         });
+    }
+}
+
+fn handle_notification_events(mut notifications_events: EventReader<NotificationEvent>) {
+    if !notifications_events.is_empty() {
+        for notification in notifications_events.iter() {
+            let NotificationEvent(title, message) = notification;
+            println!("Creating notification: {} {}", title, message);
+        }
     }
 }
