@@ -13,6 +13,11 @@ struct Floor;
 #[derive(Component)]
 struct BallObject;
 
+// Events
+// Attach object to player's ball
+#[derive(Default)]
+struct AttachObjectEvent(u32);
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(
@@ -20,6 +25,7 @@ fn main() {
             0xF9 as f32 / 255.0,
             0xFF as f32 / 255.0,
         )))
+        .add_event::<AttachObjectEvent>()
         .add_plugins(DefaultPlugins)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
@@ -27,6 +33,7 @@ fn main() {
         .add_startup_system(setup_physics)
         .add_system(move_player)
         .add_system(display_events.in_base_set(CoreSet::PostUpdate))
+        .add_system(attach_event)
         .run();
 }
 
@@ -149,6 +156,7 @@ fn display_events(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
     mut contact_force_events: EventReader<ContactForceEvent>,
+    mut attach_events: EventWriter<AttachObjectEvent>,
     player_entity: Query<Entity, With<Player>>,
     floor_entity: Query<Entity, With<Floor>>,
 ) {
@@ -188,6 +196,7 @@ fn display_events(
                 }
 
                 // Attach object to player
+                attach_events.send(AttachObjectEvent(collider_index));
 
                 // Destroy the non-player
                 // commands.entity(*collider_entity).despawn();
@@ -198,5 +207,16 @@ fn display_events(
 
     for contact_force_event in contact_force_events.iter() {
         println!("Received contact force event: {contact_force_event:?}");
+    }
+}
+
+fn attach_event(mut attach_events: EventReader<AttachObjectEvent>) {
+    // Check for events
+    if !attach_events.is_empty() {
+        // We loop over all events and use the event's collider entity index
+        attach_events.iter().for_each(|collider_event| {
+            let AttachObjectEvent(collider_index) = collider_event;
+            println!("Attaching entity ID {}", collider_index);
+        });
     }
 }
