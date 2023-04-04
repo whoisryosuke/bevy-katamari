@@ -109,24 +109,28 @@ pub fn setup_physics(
 
     // Spawn obstacles
     let obstacle_size = 2.0;
-    commands.spawn((
-        BallObject,
-        // RigidBody::Fixed,
-        Collider::cuboid(obstacle_size, obstacle_size, obstacle_size),
-        ColliderDebugColor(Color::hsl(0.0, 1.0, 220.3)),
-        // ActiveEvents::COLLISION_EVENTS,
-        // ContactForceEventThreshold(30.0),
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Box::new(
-                obstacle_size,
-                obstacle_size,
-                obstacle_size,
-            ))),
-            material: materials.add(Color::rgb(0.9, 0.15, 0.2).into()),
-            transform: Transform::from_xyz(20.0, 1.0, 0.0),
-            ..default()
-        },
-    ));
+    for index in 0..4 {
+        let direction = if 0 == index % 2 { 1.0 } else { -1.0 };
+        let offset = (index as f32 + 1.0) * direction;
+        commands.spawn((
+            BallObject,
+            // RigidBody::Fixed,
+            Collider::cuboid(obstacle_size, obstacle_size, obstacle_size),
+            ColliderDebugColor(Color::hsl(0.0, 1.0, 220.3)),
+            // ActiveEvents::COLLISION_EVENTS,
+            // ContactForceEventThreshold(30.0),
+            PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Box::new(
+                    obstacle_size,
+                    obstacle_size,
+                    obstacle_size,
+                ))),
+                material: materials.add(Color::rgb(0.9, 0.15, 0.2).into()),
+                transform: Transform::from_xyz(10.0 * offset, 1.0, 10.0 * offset),
+                ..default()
+            },
+        ));
+    }
 }
 
 fn move_player(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Velocity, With<Player>>) {
@@ -216,6 +220,7 @@ fn attach_event(
     mut attach_events: EventReader<AttachObjectEvent>,
     mut attachable_objects: Query<(Entity, &mut Transform), With<BallObject>>,
     player_entity: Query<Entity, With<Player>>,
+    rapier_context: Res<RapierContext>,
 ) {
     // Check for events
     if !attach_events.is_empty() {
@@ -237,7 +242,54 @@ fn attach_event(
                 // Remove the collider from object (you can mutate transform with it gone)
                 commands.entity(collider_entity).remove::<Collider>();
                 // Change transform from scene space to relative to object
-                collider_transform.translation.x = 2.5;
+                // collider_transform.translation.x -= collider_transform.translation.x - 2.0;
+                // collider_transform.translation.y = 0.0;
+                // collider_transform.translation.z -= collider_transform.translation.z - 2.0;
+
+                /* Find the contact pair, if it exists, between two colliders. */
+                if let Some(contact_pair) =
+                    rapier_context.contact_pair(collider_entity, player_entity)
+                {
+                    // The contact pair exists meaning that the broad-phase identified a potential contact.
+                    if contact_pair.has_any_active_contacts() {
+                        // The contact pair has active contacts, meaning that it
+                        // contains contacts for which contact forces were computed.
+                    }
+
+                    // We may also read the contact manifolds to access the contact geometry.
+                    for manifold in contact_pair.manifolds() {
+                        println!("Local-space contact normal: {}", manifold.local_n1());
+                        println!("Local-space contact normal: {}", manifold.local_n2());
+                        println!("World-space contact normal: {}", manifold.normal());
+
+                        let collision_point = manifold.local_n1();
+                        let padding = Vec3::splat(3.0);
+                        collider_transform.translation = collision_point * padding;
+
+                        // Read the geometric contacts.
+                        for contact_point in manifold.points() {
+                            // Keep in mind that all the geometric contact data are expressed in the local-space of the colliders.
+                            println!(
+                                "Found local contact point 1: {:?}",
+                                contact_point.local_p1()
+                            );
+                            println!("Found contact distance: {:?}", contact_point.dist()); // Negative if there is a penetration.
+                            println!("Found contact impulse: {}", contact_point.impulse());
+                            println!(
+                                "Found friction impulse: {:?}",
+                                contact_point.tangent_impulse()
+                            );
+                        }
+
+                        // Read the solver contacts.
+                        for solver_contact in manifold.solver_contacts() {
+                            // Keep in mind that all the solver contact data are expressed in world-space.
+                            println!("Found solver contact point: {:?}", solver_contact.point());
+                            println!("Found solver contact distance: {:?}", solver_contact.dist());
+                            // Negative if there is a penetration.
+                        }
+                    }
+                }
 
                 // Attach object to player as child
                 commands
