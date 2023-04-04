@@ -13,6 +13,17 @@ struct Floor;
 #[derive(Component)]
 struct BallObject;
 
+// Camera that follows the player
+#[derive(Component)]
+struct FollowCamera {
+    distance: f32,
+}
+impl Default for FollowCamera {
+    fn default() -> Self {
+        FollowCamera { distance: 3.0 }
+    }
+}
+
 // Events
 // Attach object to player's ball
 // @TODO: Maybe wrap Entity in an Option? So we can default to None?
@@ -32,6 +43,7 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_physics)
+        .add_system(camera_follow)
         .add_system(move_player)
         .add_system(display_events.in_base_set(CoreSet::PostUpdate))
         .add_system(attach_event)
@@ -40,11 +52,13 @@ fn main() {
 
 fn setup_graphics(mut commands: Commands) {
     // Camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(-30.0, 30.0, 100.0)
-            .looking_at(Vec3::new(0.0, 10.0, 0.0), Vec3::Y),
-        ..Default::default()
-    });
+    commands
+        .spawn(Camera3dBundle {
+            transform: Transform::from_xyz(-30.0, 30.0, 100.0)
+                .looking_at(Vec3::new(0.0, 10.0, 0.0), Vec3::Y),
+            ..Default::default()
+        })
+        .insert(FollowCamera::default());
 
     // Lighting
     commands.spawn(PointLightBundle {
@@ -131,6 +145,14 @@ pub fn setup_physics(
             },
         ));
     }
+}
+
+fn camera_follow(mut camera_query: Query<(&FollowCamera, &mut Transform)>) {
+    let (camera_state, mut camera_transform) = camera_query
+        .get_single_mut()
+        .expect("Follow camera not found.");
+
+    camera_transform.translation.y += 0.01;
 }
 
 fn move_player(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Velocity, With<Player>>) {
