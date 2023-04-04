@@ -98,30 +98,37 @@ pub fn setup_physics(
 
     // Spawn player
     let player_size = 3.0;
-    commands.spawn((
-        Player,
-        // Physics
-        // Necessary collider "boxes" around player
-        RigidBody::Dynamic,
-        Collider::ball(player_size),
-        ColliderDebugColor(Color::hsl(220.0, 1.0, 0.3)),
-        // Needed to "move" or change speed of object
-        Velocity::default(),
-        // Needed to detect collision events
-        ActiveEvents::COLLISION_EVENTS,
-        ContactForceEventThreshold(30.0),
-        // Mesh
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: player_size,
-                sectors: 16,
-                stacks: 8,
-            })),
-            material: materials.add(Color::rgb(0.0, 0.15, 0.8).into()),
-            transform: Transform::from_xyz(0.0, player_size * 1.5, 0.0),
-            ..default()
-        },
-    ));
+    commands
+        .spawn((
+            Player,
+            // Physics
+            // Necessary collider "boxes" around player
+            RigidBody::Dynamic,
+            // Needed to "move" or change speed of object
+            Velocity::default(),
+            PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::UVSphere {
+                    radius: player_size,
+                    sectors: 16,
+                    stacks: 8,
+                })),
+                material: materials.add(Color::rgb(0.0, 0.15, 0.8).into()),
+                transform: Transform::from_xyz(0.0, player_size * 1.5, 0.0),
+                ..default()
+            },
+        ))
+        .with_children(|child| {
+            // Mesh
+            child
+                .spawn((
+                    Collider::ball(player_size),
+                    ColliderDebugColor(Color::hsl(220.0, 1.0, 0.3)),
+                    // Needed to detect collision events
+                    ActiveEvents::COLLISION_EVENTS,
+                    ContactForceEventThreshold(30.0),
+                ))
+                .insert(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)));
+        });
 
     // Spawn obstacles
     let obstacle_size = 2.0;
@@ -261,6 +268,10 @@ fn attach_event(
             if let Some(mut collider_entity) = collider_entity_result {
                 println!("Attaching entity ID {}", collider_entity.index());
 
+                for obj in attachable_objects.iter() {
+                    println!("attachable obj {}", obj.0.index());
+                }
+
                 // Get the collided object's transform from query
                 // Filters all objects in the scene by the entity passed through the event
                 let (_, mut collider_transform) = attachable_objects
@@ -274,6 +285,8 @@ fn attach_event(
 
                 // Remove the collider from object (you can mutate transform with it gone)
                 commands.entity(collider_entity).remove::<Collider>();
+                // Remove the component that signifies attaching
+                commands.entity(collider_entity).remove::<BallObject>();
 
                 // Check for the "contact point" between player and object
                 if let Some(contact_pair) =
@@ -295,6 +308,13 @@ fn attach_event(
                 commands
                     .entity(player_entity)
                     .push_children(&[collider_entity]);
+
+                // let obstacle_size = 2.0;
+                // commands.entity(collider_entity).insert(Collider::cuboid(
+                //     obstacle_size,
+                //     obstacle_size,
+                //     obstacle_size,
+                // ));
             }
         });
     }
