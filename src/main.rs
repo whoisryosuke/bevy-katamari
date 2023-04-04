@@ -16,6 +16,7 @@ struct BallObject;
 // Camera that follows the player
 #[derive(Component)]
 struct FollowCamera {
+    // Distance away from player
     distance: Vec3,
 }
 impl Default for FollowCamera {
@@ -125,9 +126,9 @@ pub fn setup_physics(
 
     // Spawn obstacles
     let obstacle_size = 2.0;
-    for index in 0..4 {
+    for index in 0..20 {
         let direction = if 0 == index % 2 { 1.0 } else { -1.0 };
-        let offset = (index as f32 + 1.0) * direction;
+        let offset = (index as f32 + 0.5) * direction;
         commands.spawn((
             BallObject,
             // RigidBody::Fixed,
@@ -161,7 +162,10 @@ fn camera_follow(
         .get_single()
         .expect("Player not found for follow camera.");
 
+    // Distance camera behind player
     camera_transform.translation = player_transform.translation + camera_state.distance;
+    // "Point" the camera at the player so they're centered.
+    camera_transform.look_at(player_transform.translation, Vec3::Y);
 }
 
 fn move_player(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Velocity, With<Player>>) {
