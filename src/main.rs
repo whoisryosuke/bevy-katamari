@@ -212,8 +212,10 @@ fn display_events(
 }
 
 fn attach_event(
+    mut commands: Commands,
     mut attach_events: EventReader<AttachObjectEvent>,
     attachable_objects: Query<(Entity, &Transform), With<BallObject>>,
+    player_entity: Query<Entity, With<Player>>,
 ) {
     // Check for events
     if !attach_events.is_empty() {
@@ -224,9 +226,14 @@ fn attach_event(
                 println!("Attaching entity ID {}", collider_entity.index());
 
                 // Filter all objects in the scene by the entity passed through the event
-                let (collider_entity, collider_transform) = attachable_objects
-                    .get(collider_entity)
-                    .expect("Couldn't find collider object to attach. Might have been destroyed.");
+                // let (collider_entity, collider_transform) = attachable_objects
+                //     .get(collider_entity)
+                //     .expect("Couldn't find collider object to attach. Might have been destroyed.");
+
+                let player_entity = player_entity.get_single().unwrap();
+                commands
+                    .entity(player_entity)
+                    .push_children(&[collider_entity]);
 
                 // Attach object to player
                 // Raycast from player to this object's position to get point on player to attach
