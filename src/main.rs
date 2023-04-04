@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bevy_rapier3d::prelude::*;
 
 // The Player object
@@ -42,10 +43,12 @@ fn main() {
         )))
         .add_event::<AttachObjectEvent>()
         .add_plugins(DefaultPlugins)
+        .add_plugin(EguiPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_physics)
+        .add_system(ui_example_system)
         .add_system(camera_follow)
         .add_system(move_player)
         .add_system(display_events.in_base_set(CoreSet::PostUpdate))
@@ -148,6 +151,12 @@ pub fn setup_physics(
             },
         ));
     }
+}
+
+fn ui_example_system(mut contexts: EguiContexts) {
+    egui::Window::new("Hello").show(contexts.ctx_mut(), |ui| {
+        ui.label("world");
+    });
 }
 
 fn camera_follow(
