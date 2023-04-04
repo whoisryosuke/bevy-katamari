@@ -230,64 +230,33 @@ fn attach_event(
             if let Some(mut collider_entity) = collider_entity_result {
                 println!("Attaching entity ID {}", collider_entity.index());
 
-                // Filter all objects in the scene by the entity passed through the event
+                // Get the collided object's transform from query
+                // Filters all objects in the scene by the entity passed through the event
                 let (_, mut collider_transform) = attachable_objects
                     .get_mut(collider_entity)
                     .expect("Couldn't find collider object to attach. Might have been destroyed.");
 
                 println!("Object position {}", collider_transform.translation);
 
+                // Get player entity from query
                 let player_entity = player_entity.get_single().unwrap();
 
                 // Remove the collider from object (you can mutate transform with it gone)
                 commands.entity(collider_entity).remove::<Collider>();
-                // Change transform from scene space to relative to object
-                // collider_transform.translation.x -= collider_transform.translation.x - 2.0;
-                // collider_transform.translation.y = 0.0;
-                // collider_transform.translation.z -= collider_transform.translation.z - 2.0;
 
-                /* Find the contact pair, if it exists, between two colliders. */
+                // Check for the "contact point" between player and object
                 if let Some(contact_pair) =
                     rapier_context.contact_pair(collider_entity, player_entity)
                 {
-                    // The contact pair exists meaning that the broad-phase identified a potential contact.
-                    if contact_pair.has_any_active_contacts() {
-                        // The contact pair has active contacts, meaning that it
-                        // contains contacts for which contact forces were computed.
-                    }
-
-                    // We may also read the contact manifolds to access the contact geometry.
+                    // Get the "contact point" in local space
                     for manifold in contact_pair.manifolds() {
-                        println!("Local-space contact normal: {}", manifold.local_n1());
-                        println!("Local-space contact normal: {}", manifold.local_n2());
-                        println!("World-space contact normal: {}", manifold.normal());
-
+                        // Uses "contact point" local to object (not player)
                         let collision_point = manifold.local_n1();
+                        // We pad it a bit by the size of object
+                        // @TODO: Grab size of object and use as padding
                         let padding = Vec3::splat(3.0);
+                        // Update objects position relative to player (so it "orbits" properly)
                         collider_transform.translation = collision_point * padding;
-
-                        // Read the geometric contacts.
-                        for contact_point in manifold.points() {
-                            // Keep in mind that all the geometric contact data are expressed in the local-space of the colliders.
-                            println!(
-                                "Found local contact point 1: {:?}",
-                                contact_point.local_p1()
-                            );
-                            println!("Found contact distance: {:?}", contact_point.dist()); // Negative if there is a penetration.
-                            println!("Found contact impulse: {}", contact_point.impulse());
-                            println!(
-                                "Found friction impulse: {:?}",
-                                contact_point.tangent_impulse()
-                            );
-                        }
-
-                        // Read the solver contacts.
-                        for solver_contact in manifold.solver_contacts() {
-                            // Keep in mind that all the solver contact data are expressed in world-space.
-                            println!("Found solver contact point: {:?}", solver_contact.point());
-                            println!("Found solver contact distance: {:?}", solver_contact.dist());
-                            // Negative if there is a penetration.
-                        }
                     }
                 }
 
