@@ -12,6 +12,10 @@ use bevy_rapier3d::prelude::*;
 #[derive(Component)]
 struct Player;
 
+// The Player collider
+#[derive(Component)]
+struct PlayerCollider;
+
 // The Floor object. Used to filter some collision events.
 #[derive(Component)]
 struct Floor;
@@ -172,30 +176,37 @@ pub fn setup_physics(
 
     // Spawn player
     let player_size = 3.0;
-    commands.spawn((
-        Player,
-        // Physics
-        // Necessary collider "boxes" around player
-        RigidBody::Dynamic,
-        Collider::ball(player_size),
-        ColliderDebugColor(Color::hsl(220.0, 1.0, 0.3)),
-        // Needed to "move" or change speed of object
-        Velocity::default(),
-        // Needed to detect collision events
-        ActiveEvents::COLLISION_EVENTS,
-        ContactForceEventThreshold(30.0),
-        // Mesh
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: player_size,
-                sectors: 16,
-                stacks: 8,
-            })),
-            material: materials.add(Color::rgb(0.0, 0.15, 0.8).into()),
-            transform: Transform::from_xyz(0.0, player_size * 1.5, 0.0),
-            ..default()
-        },
-    ));
+    commands
+        .spawn((
+            Player,
+            // Physics
+            // Necessary collider "boxes" around player
+            RigidBody::Dynamic,
+            // Needed to "move" or change speed of object
+            Velocity::default(),
+            // Mesh
+            PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::UVSphere {
+                    radius: player_size,
+                    sectors: 16,
+                    stacks: 8,
+                })),
+                material: materials.add(Color::rgb(0.0, 0.15, 0.8).into()),
+                transform: Transform::from_xyz(0.0, player_size * 1.5, 0.0),
+                ..default()
+            },
+        ))
+        .with_children(|child| {
+            child.spawn((
+                PlayerCollider,
+                Collider::ball(player_size),
+                ColliderDebugColor(Color::hsl(220.0, 1.0, 0.3)),
+                // Needed to detect collision events
+                ActiveEvents::COLLISION_EVENTS,
+                ContactForceEventThreshold(30.0),
+                TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)),
+            ));
+        });
 
     // Spawn obstacles
     let obstacle_size = 2.0;
@@ -399,7 +410,7 @@ fn display_events(
     mut collision_events: EventReader<CollisionEvent>,
     mut contact_force_events: EventReader<ContactForceEvent>,
     mut attach_events: EventWriter<AttachObjectEvent>,
-    player_entity: Query<Entity, With<Player>>,
+    player_entity: Query<Entity, With<PlayerCollider>>,
     floor_entity: Query<Entity, With<Floor>>,
 ) {
     // Get the index of player and floor entities to check for later
@@ -428,6 +439,7 @@ fn display_events(
                     first_entity.index(),
                     second_entity.index()
                 );
+                println!("Player is {}", player.index());
 
                 // Check which object isn't the player
                 let mut collider_index = first_entity.index();
@@ -467,6 +479,10 @@ fn attach_event(
             let AttachObjectEvent(collider_entity_result) = collider_event;
             if let Some(mut collider_entity) = collider_entity_result {
                 println!("Attaching entity ID {}", collider_entity.index());
+
+                for (entity, _, _) in attachable_objects.iter() {
+                    println!("entity #{}", entity.index());
+                }
 
                 // Get the collided object's transform from query
                 // Filters all objects in the scene by the entity passed through the event
