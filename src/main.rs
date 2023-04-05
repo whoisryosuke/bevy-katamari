@@ -25,6 +25,7 @@ struct Notification {
     title: String,
     message: String,
     timer: Timer,
+    remove: bool,
 }
 
 // App state to store and manage notifications
@@ -75,12 +76,13 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_physics)
-        .add_system(ui_example_system)
+        .add_system(notification_ui)
         .add_system(camera_follow)
         .add_system(move_player)
         .add_system(display_events.in_base_set(CoreSet::PostUpdate))
         .add_system(attach_event)
         .add_system(handle_notification_events)
+        .add_system(notification_manager)
         .run();
 }
 
@@ -181,7 +183,7 @@ pub fn setup_physics(
     }
 }
 
-fn ui_example_system(
+fn notification_ui(
     mut contexts: EguiContexts,
     mut notification_state: ResMut<NotificationState>,
     time: Res<Time>,
@@ -193,9 +195,19 @@ fn ui_example_system(
     for notification in notification_state.notifications.iter_mut() {
         // Tick the timer
         notification.timer.tick(time.delta());
-        let alpha = notification.timer.percent() as u8 * 255;
+        // Calculate an opacity/alpha to fade out elements
+        let percent_left = if notification.remove {
+            notification.timer.percent_left()
+        } else {
+            1.0
+        };
+        let alpha = percent_left * 255.0;
+        let alpha = alpha as u8;
+
+        let text_color = Color32::from_rgba_unmultiplied(255, 255, 255, alpha);
 
         // Draw squares representing animations
+        let rounding = 16.0;
         painter.add(Shape::Rect(egui::epaint::RectShape {
             rect: Rect {
                 // The top left corner of rectangle
@@ -205,10 +217,10 @@ fn ui_example_system(
                 max: Pos2 { x: 250.0, y: 100.0 },
             },
             rounding: Rounding {
-                nw: 0.0,
-                ne: 0.0,
-                sw: 0.0,
-                se: 0.0,
+                nw: rounding,
+                ne: rounding,
+                sw: rounding,
+                se: rounding,
             },
             fill: Color32::from_rgba_unmultiplied(0, 255, 255, alpha),
             stroke: Stroke {
@@ -218,18 +230,29 @@ fn ui_example_system(
         }));
 
         // Text
+        // Title text
         let caption_galley = ctx.fonts(|fonts| {
             fonts.layout(
                 notification.title.clone(),
                 FontId::proportional(16.),
-                visuals.fg_stroke.color,
+                text_color,
                 f32::INFINITY,
             )
         });
-        // let (caption_width, caption_height) =
-        //     (caption_galley.rect.width(), caption_galley.rect.height());
 
         painter.galley(Pos2 { x: 0.0, y: 0.0 }, caption_galley);
+
+        // Message text
+        let caption_galley = ctx.fonts(|fonts| {
+            fonts.layout(
+                notification.message.clone(),
+                FontId::proportional(16.),
+                text_color,
+                f32::INFINITY,
+            )
+        });
+
+        painter.galley(Pos2 { x: 0.0, y: 16.0 }, caption_galley);
     }
 }
 
@@ -394,11 +417,53 @@ fn attach_event(
     }
 }
 
-fn handle_notification_events(mut notifications_events: EventReader<NotificationEvent>) {
+fn handle_notification_events(
+    mut notifications_events: EventReader<NotificationEvent>,
+    mut notification_state: ResMut<NotificationState>,
+) {
     if !notifications_events.is_empty() {
         for notification in notifications_events.iter() {
             let NotificationEvent(title, message) = notification;
             println!("Creating notification: {} {}", title, message);
+            notification_state.notifications.push(Notification {
+                title: title.clone(),
+                message: message.clone(),
+                timer: Timer::from_seconds(3.0, TimerMode::Once),
+                remove: false,
+            })
         }
+
+        // Clear all events
+        notifications_events.clear();
+    }
+}
+
+fn notification_manager(mut notification_state: ResMut<NotificationState>, time: Res<Time>) {
+    // List of notification indexes we want to remove
+    let mut remove_indexes = vec![];
+
+    // Loop through notifications and see if their time is up
+    for (index, notification) in notification_state.notifications.iter_mut().enumerate() {
+        // Tick the timer
+        notification.timer.tick(time.delta());
+
+        // Did timer finish? Add notification to remove list
+        if notification.timer.finished() {
+            // Reset timer for use in animation
+            notification.timer.reset();
+
+            // Marked for removal? Add to remove list
+            if notification.remove {
+                remove_indexes.push(index);
+            }
+
+            // Mark notification to fade out (and eventually remove)
+            notification.remove = true;
+        }
+    }
+
+    // Remove completed notifications
+    for index in remove_indexes.iter() {
+        notification_state.notifications.remove(*index);
     }
 }
