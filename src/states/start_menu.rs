@@ -13,15 +13,16 @@ impl Plugin for StartMenuPlugin {
     }
 }
 
-pub fn start_menu_setup(mut contexts: EguiContexts) {
+pub fn start_menu_setup() {
     println!("Start Menu setup");
+}
+
+pub fn start_menu_system(mut contexts: EguiContexts) {
     egui::Window::new("Start Menu").show(contexts.ctx_mut(), |ui| {
         ui.heading("General");
         ui.label("Position");
         // ui.add(egui::DragValue::new(&mut debug_state.debug_position.x).speed(1.0));
     });
 }
-
-pub fn start_menu_system() {}
 
 pub fn start_menu_cleanup() {}
