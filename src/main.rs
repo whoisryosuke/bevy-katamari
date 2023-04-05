@@ -198,6 +198,12 @@ fn notification_ui(
     let painter = ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("notifications")));
     let visuals = ctx.style().visuals.widgets.noninteractive;
 
+    let (screen_width, screen_height) = (ctx.screen_rect().width(), ctx.screen_rect().height());
+    let start_position = Pos2 {
+        x: screen_width,
+        y: screen_height,
+    };
+
     if notification_state.notifications.len() <= 0 {
         return;
     }
@@ -218,15 +224,22 @@ fn notification_ui(
     let bg_color = Color32::from_rgba_unmultiplied(2, 0, 86, alpha);
     let rounding = 16.0;
     let padding = 16.0 + 8.0;
+    let bg_position_tl = Pos2 {
+        x: start_position.x - 250.0 - padding,
+        y: start_position.y - 100.0 - padding,
+    };
 
     // Draw squares representing animations
     painter.add(Shape::Rect(egui::epaint::RectShape {
         rect: Rect {
             // The top left corner of rectangle
             // Still screen space positioning - so we convert using RectTransform
-            min: Pos2 { x: 0.0, y: 0.0 },
+            min: bg_position_tl,
             // The bottom right corner of rectangle
-            max: Pos2 { x: 250.0, y: 100.0 },
+            max: Pos2 {
+                x: start_position.x - padding,
+                y: start_position.y - padding,
+            },
         },
         rounding: Rounding {
             nw: rounding,
@@ -254,8 +267,8 @@ fn notification_ui(
 
     painter.galley(
         Pos2 {
-            x: padding,
-            y: padding,
+            x: bg_position_tl.x + padding,
+            y: bg_position_tl.y + padding,
         },
         caption_galley,
     );
@@ -272,8 +285,8 @@ fn notification_ui(
 
     painter.galley(
         Pos2 {
-            x: padding,
-            y: 16.0 + padding,
+            x: bg_position_tl.x + padding,
+            y: bg_position_tl.y + 16.0 + padding,
         },
         caption_galley,
     );
