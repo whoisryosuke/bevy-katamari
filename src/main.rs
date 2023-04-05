@@ -468,7 +468,7 @@ fn attach_event(
     mut commands: Commands,
     mut attach_events: EventReader<AttachObjectEvent>,
     mut attachable_objects: Query<(Entity, &mut Transform, &BallObject), With<BallObject>>,
-    player_entity: Query<Entity, With<Player>>,
+    player_entity: Query<Entity, With<PlayerCollider>>,
     rapier_context: Res<RapierContext>,
     mut notification_events: EventWriter<NotificationEvent>,
 ) {
