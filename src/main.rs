@@ -189,11 +189,7 @@ pub fn setup_physics(
     }
 }
 
-fn notification_ui(
-    mut contexts: EguiContexts,
-    mut notification_state: ResMut<NotificationState>,
-    time: Res<Time>,
-) {
+fn notification_ui(mut contexts: EguiContexts, mut notification_state: ResMut<NotificationState>) {
     let ctx = contexts.ctx_mut();
     let painter = ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("notifications")));
     let visuals = ctx.style().visuals.widgets.noninteractive;
@@ -209,8 +205,6 @@ fn notification_ui(
     }
 
     let mut notification = &mut notification_state.notifications[0];
-    // Tick the timer
-    notification.timer.tick(time.delta());
     // Calculate an opacity/alpha to fade out elements
     let percent_left = if notification.remove {
         notification.timer.percent_left()
