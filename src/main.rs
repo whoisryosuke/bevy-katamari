@@ -192,68 +192,85 @@ fn notification_ui(
     let painter = ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("notifications")));
     let visuals = ctx.style().visuals.widgets.noninteractive;
 
-    for notification in notification_state.notifications.iter_mut() {
-        // Tick the timer
-        notification.timer.tick(time.delta());
-        // Calculate an opacity/alpha to fade out elements
-        let percent_left = if notification.remove {
-            notification.timer.percent_left()
-        } else {
-            1.0
-        };
-        let alpha = percent_left * 255.0;
-        let alpha = alpha as u8;
-
-        let text_color = Color32::from_rgba_unmultiplied(255, 255, 255, alpha);
-
-        // Draw squares representing animations
-        let rounding = 16.0;
-        painter.add(Shape::Rect(egui::epaint::RectShape {
-            rect: Rect {
-                // The top left corner of rectangle
-                // Still screen space positioning - so we convert using RectTransform
-                min: Pos2 { x: 0.0, y: 0.0 },
-                // The bottom right corner of rectangle
-                max: Pos2 { x: 250.0, y: 100.0 },
-            },
-            rounding: Rounding {
-                nw: rounding,
-                ne: rounding,
-                sw: rounding,
-                se: rounding,
-            },
-            fill: Color32::from_rgba_unmultiplied(0, 255, 255, alpha),
-            stroke: Stroke {
-                width: 0.0,
-                color: Color32::WHITE,
-            },
-        }));
-
-        // Text
-        // Title text
-        let caption_galley = ctx.fonts(|fonts| {
-            fonts.layout(
-                notification.title.clone(),
-                FontId::proportional(16.),
-                text_color,
-                f32::INFINITY,
-            )
-        });
-
-        painter.galley(Pos2 { x: 0.0, y: 0.0 }, caption_galley);
-
-        // Message text
-        let caption_galley = ctx.fonts(|fonts| {
-            fonts.layout(
-                notification.message.clone(),
-                FontId::proportional(16.),
-                text_color,
-                f32::INFINITY,
-            )
-        });
-
-        painter.galley(Pos2 { x: 0.0, y: 16.0 }, caption_galley);
+    if notification_state.notifications.len() <= 0 {
+        return;
     }
+
+    let mut notification = &mut notification_state.notifications[0];
+    // Tick the timer
+    notification.timer.tick(time.delta());
+    // Calculate an opacity/alpha to fade out elements
+    let percent_left = if notification.remove {
+        notification.timer.percent_left()
+    } else {
+        1.0
+    };
+    let alpha = percent_left * 255.0;
+    let alpha = alpha as u8;
+
+    let text_color = Color32::from_rgba_unmultiplied(255, 255, 255, alpha);
+    let bg_color = Color32::from_rgba_unmultiplied(2, 0, 86, alpha);
+    let rounding = 16.0;
+    let padding = 16.0 + 8.0;
+
+    // Draw squares representing animations
+    painter.add(Shape::Rect(egui::epaint::RectShape {
+        rect: Rect {
+            // The top left corner of rectangle
+            // Still screen space positioning - so we convert using RectTransform
+            min: Pos2 { x: 0.0, y: 0.0 },
+            // The bottom right corner of rectangle
+            max: Pos2 { x: 250.0, y: 100.0 },
+        },
+        rounding: Rounding {
+            nw: rounding,
+            ne: rounding,
+            sw: rounding,
+            se: rounding,
+        },
+        fill: bg_color,
+        stroke: Stroke {
+            width: 0.0,
+            color: Color32::WHITE,
+        },
+    }));
+
+    // Text
+    // Title text
+    let caption_galley = ctx.fonts(|fonts| {
+        fonts.layout(
+            notification.title.clone(),
+            FontId::proportional(16.),
+            text_color,
+            f32::INFINITY,
+        )
+    });
+
+    painter.galley(
+        Pos2 {
+            x: padding,
+            y: padding,
+        },
+        caption_galley,
+    );
+
+    // Message text
+    let caption_galley = ctx.fonts(|fonts| {
+        fonts.layout(
+            notification.message.clone(),
+            FontId::proportional(16.),
+            text_color,
+            f32::INFINITY,
+        )
+    });
+
+    painter.galley(
+        Pos2 {
+            x: padding,
+            y: 16.0 + padding,
+        },
+        caption_galley,
+    );
 }
 
 fn camera_follow(
@@ -425,10 +442,12 @@ fn handle_notification_events(
         for notification in notifications_events.iter() {
             let NotificationEvent(title, message) = notification;
             println!("Creating notification: {} {}", title, message);
+            let mut timer = Timer::from_seconds(3.0, TimerMode::Once);
+            timer.pause();
             notification_state.notifications.push(Notification {
                 title: title.clone(),
                 message: message.clone(),
-                timer: Timer::from_seconds(3.0, TimerMode::Once),
+                timer: timer,
                 remove: false,
             })
         }
@@ -444,8 +463,14 @@ fn notification_manager(mut notification_state: ResMut<NotificationState>, time:
 
     // Loop through notifications and see if their time is up
     for (index, notification) in notification_state.notifications.iter_mut().enumerate() {
-        // Tick the timer
-        notification.timer.tick(time.delta());
+        if index == 0 {
+            if notification.timer.paused() {
+                notification.timer.unpause();
+            }
+
+            // Tick the timer
+            notification.timer.tick(time.delta());
+        }
 
         // Did timer finish? Add notification to remove list
         if notification.timer.finished() {
