@@ -18,7 +18,10 @@ struct Floor;
 
 // Objects that can "attach" to our player's ball
 #[derive(Component)]
-struct BallObject;
+struct BallObject {
+    name: String,
+    category: String,
+}
 
 // Notification data
 struct Notification {
@@ -163,7 +166,10 @@ pub fn setup_physics(
         let direction = if 0 == index % 2 { 1.0 } else { -1.0 };
         let offset = (index as f32 + 0.5) * direction;
         commands.spawn((
-            BallObject,
+            BallObject {
+                name: format!("Box {index}"),
+                category: "Priceless Treasures".to_string(),
+            },
             // RigidBody::Fixed,
             Collider::cuboid(obstacle_size, obstacle_size, obstacle_size),
             ColliderDebugColor(Color::hsl(0.0, 1.0, 220.3)),
@@ -258,7 +264,7 @@ fn notification_ui(
     let caption_galley = ctx.fonts(|fonts| {
         fonts.layout(
             notification.message.clone(),
-            FontId::proportional(16.),
+            FontId::proportional(12.),
             text_color,
             f32::INFINITY,
         )
@@ -376,7 +382,7 @@ fn display_events(
 fn attach_event(
     mut commands: Commands,
     mut attach_events: EventReader<AttachObjectEvent>,
-    mut attachable_objects: Query<(Entity, &mut Transform), With<BallObject>>,
+    mut attachable_objects: Query<(Entity, &mut Transform, &BallObject), With<BallObject>>,
     player_entity: Query<Entity, With<Player>>,
     rapier_context: Res<RapierContext>,
     mut notification_events: EventWriter<NotificationEvent>,
@@ -391,7 +397,7 @@ fn attach_event(
 
                 // Get the collided object's transform from query
                 // Filters all objects in the scene by the entity passed through the event
-                let (_, mut collider_transform) = attachable_objects
+                let (_, mut collider_transform, ball_data) = attachable_objects
                     .get_mut(collider_entity)
                     .expect("Couldn't find collider object to attach. Might have been destroyed.");
 
@@ -426,8 +432,8 @@ fn attach_event(
 
                 // Send notification
                 notification_events.send(NotificationEvent(
-                    "Test".to_string(),
-                    "Smoke weed everyday".to_string(),
+                    ball_data.name.clone(),
+                    ball_data.category.clone(),
                 ))
             }
         });
