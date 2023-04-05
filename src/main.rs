@@ -37,6 +37,32 @@ struct NotificationState {
     notifications: Vec<Notification>,
 }
 
+// App-level debug state
+#[derive(Resource)]
+struct DebugState {
+    // Is debug menu visible?
+    visible: bool,
+    // A general position value to play with
+    debug_position: Vec3,
+}
+
+// Input throttle
+const THROTTLE_TIME: f32 = 0.2;
+#[derive(Resource)]
+struct InputThrottle {
+    // Timer to handle throttling
+    timer: Timer,
+    // Is input locked?
+    locked: bool,
+}
+
+impl InputThrottle {
+    fn press(&mut self) {
+        self.locked = true;
+        self.timer.reset();
+    }
+}
+
 // Camera that follows the player
 #[derive(Component)]
 struct FollowCamera {
@@ -73,6 +99,14 @@ fn main() {
         .insert_resource(NotificationState {
             notifications: vec![],
         })
+        .insert_resource(DebugState {
+            visible: false,
+            debug_position: Vec3::splat(0.0),
+        })
+        .insert_resource(InputThrottle {
+            timer: Timer::from_seconds(THROTTLE_TIME, TimerMode::Once),
+            locked: false,
+        })
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
@@ -86,6 +120,9 @@ fn main() {
         .add_system(attach_event)
         .add_system(handle_notification_events)
         .add_system(notification_manager)
+        .add_system(debug_ui)
+        .add_system(debug_controls)
+        .add_system(input_throttle)
         .run();
 }
 
@@ -186,6 +223,44 @@ pub fn setup_physics(
                 ..default()
             },
         ));
+    }
+}
+
+fn debug_ui(mut contexts: EguiContexts, mut debug_state: ResMut<DebugState>) {
+    if debug_state.visible {
+        egui::Window::new("Debug").show(contexts.ctx_mut(), |ui| {
+            ui.heading("General");
+            ui.label("Position");
+            ui.add(egui::DragValue::new(&mut debug_state.debug_position.x).speed(1.0));
+        });
+    }
+}
+
+fn debug_controls(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut debug_state: ResMut<DebugState>,
+    mut input_throttle: ResMut<InputThrottle>,
+) {
+    if input_throttle.locked {
+        return;
+    }
+
+    if keyboard_input.pressed(KeyCode::LShift) && keyboard_input.pressed(KeyCode::P) {
+        if debug_state.visible {
+            debug_state.visible = false;
+        } else {
+            debug_state.visible = true;
+        }
+        // Reset input throttle
+        input_throttle.press();
+    }
+}
+
+fn input_throttle(mut input_throttle: ResMut<InputThrottle>, time: Res<Time>) {
+    input_throttle.timer.tick(time.delta());
+
+    if input_throttle.timer.finished() {
+        input_throttle.locked = false;
     }
 }
 
