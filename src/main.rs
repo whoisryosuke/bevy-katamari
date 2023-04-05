@@ -221,6 +221,10 @@ pub fn setup_physics(
             // RigidBody::Fixed,
             Collider::cuboid(obstacle_size, obstacle_size, obstacle_size),
             ColliderDebugColor(Color::hsl(0.0, 1.0, 220.3)),
+            // Friction {
+            //     coefficient: 1.0,
+            //     combine_rule: CoefficientCombineRule::Min,
+            // },
             // ActiveEvents::COLLISION_EVENTS,
             // ContactForceEventThreshold(30.0),
             PbrBundle {
@@ -496,7 +500,7 @@ fn attach_event(
                 let player_entity = player_entity.get_single().unwrap();
 
                 // Remove the collider from object (you can mutate transform with it gone)
-                commands.entity(collider_entity).remove::<Collider>();
+                // commands.entity(collider_entity).remove::<Collider>();
 
                 // Check for the "contact point" between player and object
                 if let Some(contact_pair) =
@@ -513,6 +517,13 @@ fn attach_event(
                         collider_transform.translation = collision_point * padding;
                     }
                 }
+
+                // let obstacle_size = 2.0;
+                // commands.entity(collider_entity).insert(Collider::cuboid(
+                //     obstacle_size,
+                //     obstacle_size,
+                //     obstacle_size,
+                // ));
 
                 // Attach object to player as child
                 commands
