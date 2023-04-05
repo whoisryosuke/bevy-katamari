@@ -1,4 +1,6 @@
 use bevy::{prelude::*, window::*};
+use bevy_egui::EguiPlugin;
+use bevy_rapier3d::prelude::{NoUserData, RapierPhysicsPlugin};
 use debug::DebugPlugin;
 use states::AppStatePlugin;
 
@@ -15,6 +17,8 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugin(EguiPlugin)
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(DebugPlugin)
         .add_plugin(AppStatePlugin)
         .run();
