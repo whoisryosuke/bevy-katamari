@@ -7,6 +7,9 @@ use bevy_egui::{
     EguiContexts, EguiPlugin,
 };
 use bevy_rapier3d::prelude::*;
+use debug::DebugPlugin;
+
+mod debug;
 
 // The Player object
 #[derive(Component)]
@@ -35,15 +38,6 @@ struct Notification {
 #[derive(Resource)]
 struct NotificationState {
     notifications: Vec<Notification>,
-}
-
-// App-level debug state
-#[derive(Resource)]
-struct DebugState {
-    // Is debug menu visible?
-    visible: bool,
-    // A general position value to play with
-    debug_position: Vec3,
 }
 
 // Input throttle
@@ -99,10 +93,6 @@ fn main() {
         .insert_resource(NotificationState {
             notifications: vec![],
         })
-        .insert_resource(DebugState {
-            visible: false,
-            debug_position: Vec3::splat(0.0),
-        })
         .insert_resource(InputThrottle {
             timer: Timer::from_seconds(THROTTLE_TIME, TimerMode::Once),
             locked: false,
@@ -110,7 +100,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(DebugPlugin)
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_physics)
         .add_system(notification_ui)
@@ -120,8 +110,6 @@ fn main() {
         .add_system(attach_event)
         .add_system(handle_notification_events)
         .add_system(notification_manager)
-        .add_system(debug_ui)
-        .add_system(debug_controls)
         .add_system(input_throttle)
         .run();
 }
@@ -223,28 +211,6 @@ pub fn setup_physics(
                 ..default()
             },
         ));
-    }
-}
-
-fn debug_ui(mut contexts: EguiContexts, mut debug_state: ResMut<DebugState>) {
-    if debug_state.visible {
-        egui::Window::new("Debug").show(contexts.ctx_mut(), |ui| {
-            ui.heading("General");
-            ui.label("Position");
-            ui.add(egui::DragValue::new(&mut debug_state.debug_position.x).speed(1.0));
-        });
-    }
-}
-
-fn debug_controls(keyboard_input: Res<Input<KeyCode>>, mut debug_state: ResMut<DebugState>) {
-    if keyboard_input.pressed(KeyCode::LShift) && keyboard_input.just_released(KeyCode::P) {
-        if debug_state.visible {
-            debug_state.visible = false;
-        } else {
-            debug_state.visible = true;
-        }
-        // Reset input throttle
-        // input_throttle.press();
     }
 }
 
