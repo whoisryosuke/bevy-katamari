@@ -229,11 +229,10 @@ fn notification_ui(
         y: start_position.y - 100.0 - padding,
     };
 
-    // Draw squares representing animations
+    // Draw notification BG
     painter.add(Shape::Rect(egui::epaint::RectShape {
         rect: Rect {
             // The top left corner of rectangle
-            // Still screen space positioning - so we convert using RectTransform
             min: bg_position_tl,
             // The bottom right corner of rectangle
             max: Pos2 {
