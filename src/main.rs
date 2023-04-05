@@ -236,23 +236,15 @@ fn debug_ui(mut contexts: EguiContexts, mut debug_state: ResMut<DebugState>) {
     }
 }
 
-fn debug_controls(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut debug_state: ResMut<DebugState>,
-    mut input_throttle: ResMut<InputThrottle>,
-) {
-    if input_throttle.locked {
-        return;
-    }
-
-    if keyboard_input.pressed(KeyCode::LShift) && keyboard_input.pressed(KeyCode::P) {
+fn debug_controls(keyboard_input: Res<Input<KeyCode>>, mut debug_state: ResMut<DebugState>) {
+    if keyboard_input.pressed(KeyCode::LShift) && keyboard_input.just_released(KeyCode::P) {
         if debug_state.visible {
             debug_state.visible = false;
         } else {
             debug_state.visible = true;
         }
         // Reset input throttle
-        input_throttle.press();
+        // input_throttle.press();
     }
 }
 
