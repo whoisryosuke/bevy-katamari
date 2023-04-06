@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts};
+use bevy_egui::{
+    egui::{self, Color32},
+    EguiContexts,
+};
 
 use super::AppState;
 
@@ -17,12 +20,25 @@ pub fn start_menu_setup() {
     println!("Start Menu setup");
 }
 
-pub fn start_menu_system(mut contexts: EguiContexts) {
-    egui::Window::new("Start Menu").show(contexts.ctx_mut(), |ui| {
-        ui.heading("General");
-        ui.label("Position");
-        // ui.add(egui::DragValue::new(&mut debug_state.debug_position.x).speed(1.0));
+pub fn start_menu_system(mut contexts: EguiContexts, mut app_state: ResMut<NextState<AppState>>) {
+    let context = contexts.ctx_mut();
+    let mut visuals = context.style().visuals.clone();
+    visuals.window_fill = Color32::BLUE;
+    visuals.window_stroke.width = 0.0;
+    context.set_visuals(visuals);
+
+    egui::Window::new("Start Menu").show(context, |ui| {
+        if ui.button("Start Game").clicked() {
+            // Start game
+            app_state.set(AppState::Game);
+        }
+
+        if ui.button("Settings").clicked() {
+            // Settings
+        }
     });
 }
 
-pub fn start_menu_cleanup() {}
+pub fn start_menu_cleanup() {
+    println!("Start Menu cleanup");
+}

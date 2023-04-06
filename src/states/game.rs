@@ -11,7 +11,9 @@ impl Plugin for GamePlugin {
     }
 }
 
-pub fn game_setup() {}
+pub fn game_setup() {
+    println!("Game setup");
+}
 
 pub fn game_system() {}
 
